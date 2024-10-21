@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Сжатие изображений</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Сжать изображения</h1>
+    <form id="upload-form">
+      <input type="file" id="image-input" name="images" accept="image/*" multiple required>
+      <button type="submit">Сжать изображения</button>
+    </form>
+    <div id="loading" class="loading" style="display: none;">Загрузка...</div>
+    <div id="download-links" style="display: none;">
+      <h2>Ссылки для скачивания:</h2>
+      <ul id="links-list"></ul>
+    </div>
+  </div>
+
+  <script>
+    const uploadForm = document.getElementById('upload-form');
+    const imageInput = document.getElementById('image-input');
+    const loadingIndicator = document.getElementById('loading');
+    const downloadLinksContainer = document.getElementById('download-links');
+    const linksList = document.getElementById('links-list');
+
+    // Обработка отправки формы
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData();
+
+      for (const file of imageInput.files) {
+        formData.append('images', file);
+      }
+
+      await compressImages(formData);
+    });
+
+    // Функция для обработки сжатия изображений
+    async function compressImages(formData) {
+      try {
+        loadingIndicator.style.display = 'block';
+        downloadLinksContainer.style.display = 'none';
+        linksList.innerHTML = '';
+
+        const response = await fetch('/compress', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const jsonResponse = await response.json();
+          const zipLinkElement = document.createElement('li');
+          const zipDownloadLink = document.createElement('a');
+          zipDownloadLink.href = jsonResponse.zipUrl;
+          zipDownloadLink.download = `compressed_images_${Date.now()}.zip`;
+          zipDownloadLink.textContent = 'Скачать все в ZIP-архиве';
+          zipLinkElement.appendChild(zipDownloadLink);
+          linksList.appendChild(zipLinkElement);
+          
+          downloadLinksContainer.style.display = 'block';
+        } else {
+          alert('Ошибка при сжатии изображений. Убедитесь, что вы загружаете более одного изображения.');
+        }
+      } catch (error) {
+        console.error('Ошибка запроса:', error);
+        alert('Произошла ошибка. Попробуйте еще раз.');
+      } finally {
+        loadingIndicator.style.display = 'none';
+      }
+    }
+
+    // Drag & Drop для всей страницы
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const formData = new FormData();
+        for (const file of e.dataTransfer.files) {
+          formData.append('images', file);
+        }
+        compressImages(formData);
+        e.dataTransfer.clearData();
+      }
+    });
+  </script>
+</body>
+</html>
